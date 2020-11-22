@@ -1,0 +1,4 @@
+rootProject.name = 'netty-echo-server'
+include 'netty-client'
+include 'netty-server'
+
