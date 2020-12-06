@@ -8,7 +8,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.ImmediateEventExecutor;
 
+import javax.net.ssl.SSLException;
 import java.net.InetSocketAddress;
+import java.security.cert.CertificateException;
 
 public class ChatServer
 {
@@ -29,12 +31,12 @@ public class ChatServer
         return future;
     }
 
-    private ChannelInitializer<Channel> createInitializer (ChannelGroup channelGroup)
+    protected ChannelInitializer<Channel> createInitializer (ChannelGroup channelGroup)
     {
         return new ChatServerInitializer(channelGroup);
     }
 
-    private void destroy ()
+    protected void destroy ()
     {
         if (channel != null)
         {
@@ -44,7 +46,7 @@ public class ChatServer
         group.shutdownGracefully();
     }
 
-    public static void main (String[] args)
+    public static void main (String[] args) throws CertificateException, SSLException, Exception
     {
         if (args.length != 1)
         {
