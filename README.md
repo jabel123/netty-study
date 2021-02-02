@@ -6,7 +6,7 @@
 
 - [01장. 네티: 비동기식 이벤트 기반 네트워킹 프레임워크](./chap01/chap01_summary.md)
 - [02장. 첫 번째 네티 애플리케이션](./chap02/chap02_summary.md)
-- 03장. 네티 컴포넌트와 설계
+- [03장. 네티 컴포넌트와 설계](./chap03/chap03_summary.md)
 - 04장. 전송
 - 05장. ByteBuf
 - 06장. ChannelHandler와 ChannelPipeline
