@@ -9,7 +9,7 @@
 - [03장. 네티 컴포넌트와 설계](./chap03/chap03_summary.md)
 - [04장. 전송](./chap04/chap04_summary.md)
 - [05장. ByteBuf](./chap05/chap05_summary.md)
-- 06장. ChannelHandler와 ChannelPipeline
+- [06장. ChannelHandler와 ChannelPipeline](./chap06/chap06_summary.md)
 - 07장. EventLoop와 스레딩 모델
 - 08장. 부트스트랩.
 - 09장. 단위 테스트
