@@ -10,7 +10,7 @@
 - [04장. 전송](./chap04/chap04_summary.md)
 - [05장. ByteBuf](./chap05/chap05_summary.md)
 - [06장. ChannelHandler와 ChannelPipeline](./chap06/chap06_summary.md)
-- 07장. EventLoop와 스레딩 모델
+- [07장. EventLoop와 스레딩 모델](./chap07/chap07_summary.md)
 - 08장. 부트스트랩.
 - 09장. 단위 테스트
 - 10장. 코덱 프레임워크
