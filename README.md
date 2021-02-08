@@ -11,7 +11,7 @@
 - [05장. ByteBuf](./chap05/chap05_summary.md)
 - [06장. ChannelHandler와 ChannelPipeline](./chap06/chap06_summary.md)
 - [07장. EventLoop와 스레딩 모델](./chap07/chap07_summary.md)
-- 08장. 부트스트랩.
+- [08장. 부트스트랩.](./chap08/chap08_summary.md)
 - 09장. 단위 테스트
 - 10장. 코덱 프레임워크
 - 11장. 네티에서 제공하는 ChannelHandler와 코덱
