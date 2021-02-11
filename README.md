@@ -13,7 +13,7 @@
 - [07장. EventLoop와 스레딩 모델](./chap07/chap07_summary.md)
 - [08장. 부트스트랩.](./chap08/chap08_summary.md)
 - [09장. 단위 테스트](./chap09/chap09_summary.md)
-- 10장. 코덱 프레임워크
+- [10장. 코덱 프레임워크](./chap10/chap10_summary.md)
 - 11장. 네티에서 제공하는 ChannelHandler와 코덱
 - 12장. 웹소켓
 - 13장. UDP를 이용한 이벤트 브로드캐스팅
