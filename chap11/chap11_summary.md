@@ -234,3 +234,45 @@ public class WebSocketServerInitializer extends ChannelInitializer<Channel>
         }
     }
 }
+```
+
+### 유휴 연결과 시간 만료
+
+지금까지 네티의 특별한 코덱과 핸들러를 이용해 HTTP/HTTPS와 웹소켓을 처리하는 방법을 주로 알아봤다. 네트워크 리소스가 효율적으로 관리되는 경우 이러한 기술을 바탕으로 웹 애플리케이션의 효율, 편이성, 보안성을 더 개선할 수 있따. 다음으로 이러한 조건을 충족하기 위한 연결 관리에 대해 알아보자.
+
+리소스를 시기적절하게 해제하려면 유휴 연결을 감지하고 시간을 만료시키는 것이 중요하다. 이러한 유휴 연결과 관련된 작업은 일반적이므로 네티는 이 작업만을 위한 여러 ChannelHandler 구현을 제공한다.
+
+*유휴 연결과 시간 만료를 위한 ChannelHandler*
+|이름|설명|
+|---|---|
+|IdleStateHandler|연결이 너무 오랫동안 유휴 상태인 경우 IdleStateEvent를 생성한다. IdleStateEvent를 처리하려면 ChannelInboundHandler에서 userEventTriggered()를 재정의한다.|
+|ReadTimeoutHandler|지정한 기간 동안 인바운드 데이터를 받지 못한 경우 ReadTimeoutException을 생성하고 Channel을 닫느다. ReadTimeoutException을 감지하려면 ChannelHandler에서 exceptionCaught()를 재정의한다.|
+|WriteTImeoutHandler|지정한 기간동안 인바운드 데이터를 받지 못한 경우 WriteTimeoutException을 생성하고 Channel을 닫는다. WriteTimeoutException을 감지하려면 ChannelHandler에서 exceptionCaught()를 재정의한다.|
+
+
+*하트비트 전송*
+```
+public class IdelStateHandlerInitializer extends ChannelInitializer<Channel>
+{
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        pipeline.addLast(new IdleStateHandler(0, 0, 60, TimeUnit.SECONDS));
+        pipeline.addLast(new HeartbeatHandler());
+    }
+
+    public static final class HeartbeatHandler extends ChannelStateHandlerAdapter {
+        private static final ByteBuf HEARTBEAT_SEQUENCE = Unpooled.unreleasableBuffer(Unpooled.copiedBuffer("HEARTBEAT", CharsetUtil.ISO_8859_1));
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception 
+    {
+        if (evt instanceof IdleStateEvent) {
+            ctx.writeAndFlush(HEARTBEAT_SEQUENCE.duplicate()).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+        }
+        else {
+            super.userEventTriggered(ctx, evt);
+        }
+    }
+}
