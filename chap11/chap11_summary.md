@@ -276,3 +276,206 @@ public class IdelStateHandlerInitializer extends ChannelInitializer<Channel>
         }
     }
 }
+```
+
+## 구분 기호 및 길이 기반 프로토콜의 디코딩
+
+### 구분 기호 프로토콜
+구분 기호 메시지 프로토콜은 프레임이라고 하는 메시지나 메시지 세그먼트의 시작과 끝을 정의된 문자로 표시한다. SMTP, POP3, IMAP, 텔넷과 같이 공식적으로 RFC 문서로 정의된 여러 프로토콜이 이러한 구분 기호 프로토콜에 해당하며 기업 내부에서 특정 포맷을 정의해 이용하는 경우도 있다.
+
+다음의 디코더를 이용하면 어떤 프로토콜이던지 관계없이 다양한 토큰 시퀀스로 구분되는 프레임을 추출하는 커스텀 디코더를 정의할 수 있다.
+
+|이름|설명|
+|---|---|
+|DelimiterBasedFrameDecoder|사용자가 제공한 구분 기호를 이용해 프레임을 추출하는 범용 디코더|
+|LineBasedFrameDecoder|행 종료 \n 또는 \r\n 문자로 구분된 프레임을 추출하는 디코더. 이 디코더는 DelimiterBasedFrameDecoder보다 빠르다.|
+
+*행 구분 프레임의 처리*
+```
+public class LineBasedHanlderInitializer extends ChannelInitializer<Channel> {
+
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        pipeline.addLast(new LineBasedFrameDecoder(64 * 1024));
+        pipeline.addLast(new FrameHandler());
+    }
+
+    public static final class FrameHandler extends SimpleChannelInboundHandler<ByteBuf>{
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+            // 프레임에서 추출한 데이터로 필요한 작업을 처리
+        }
+    }
+}
+
+```
+
+### 길이 기반 프로톸로
+
+길이 기반 프로토콜은 특수한 구문 문자로 끝을 표시하지 않고 프레임의 헤더 세그먼트에 프레임의 길이를 인코딩 하는 방법으로 프레임을 정의한다.
+
+*길이 기반 프로토콜을 위한 디코더*
+|이름|설명|
+|---|---|
+|FixedLengthFrameDecoder|생성자를 호출할 때 지정한 고정 크기의 프레임을 추출한다.|
+|LEngthFieldBasedFrameDecoder|프레임 헤더의 필드에 인코딩된 길이 값을 기준으로 프레임을 추출한다. 필드의 오프셋과 길이는 생성자에서 지정한다.|
+
+```
+public class LengthBasedInitializer extends ChannelInitializer<Channel> {
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        pipeline.addLast(new LengthFieldBasedFrameDecoder(64 * 1024, 0, 8));
+        pipeline.addLast(new FrameHandler());
+    }
+
+    private static final class FrameHandler extends SimpleChannelInboundHandler<ByteBuf>
+    {
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+            // 프레임을 이용해 필요한 일을 함
+        }
+    }
+}
+```
+
+## 대용량 데이터 기록
+
+대용량 데이터를 기록하는 작업은 네트워크 포화의 가능성 때문에 비동기 프레임워크의 특수한 문제로 여겨지고 있따. 기록 작업은 논블로킹이므로 완료 시 반환되며 모든 데이터를 기록하지 않았더라도 ChannelFuture에 알림을 전달한다. 이 경우 기록을 중단하지 않으면 메모리가 부족해질 우려가 있다. 따라서 대용량 데이터를 기록할 때는 원격 피어와의 느린 연결 속도 때문에 메모리 해제가 지연될 가능성에 대비해야 한다.
+
+실제 작업은 네티의 코어에서 수행되므로 애플리케이션에서는 네티 API 설명서에 "제로 카피 파일 전송을 지원하는 Channel을 통해 전송되는 파일의 영역"이라고 정의된 FileRegion 인터페이스의 구현을 이용하기만 하면 된다.
+
+다음 예제는 제로 카피 기능을 이용해 파일의 내용을 전송하기 위해 FileInputStream에서 DefaultFileRegion을 생성하고 이를 Channel에 기록하는 방법이다.
+
+*FileRegion을 이용한 파일 내용 전송*
+```
+FileInputStream in = new FileInputStream(file);
+FileRegion region = new DefaultFileRegion(in.getChannel(), 0, file.length());
+channel.writeAndFlush(region).addListener(
+    new ChannelFutureListener() {
+        @Override
+        public void operationCopmlete(ChannelFuture future) thrwos Exception
+        {
+            if (!future.isSuccess())
+            {
+                Throwable cause = future.cause();
+            }
+        }
+    }
+)
+```
+
+데이터를 파일 시스템에서 사용자 메모리로 복사해야 하는 경우 메모리 소비를 최소화하면서 대용량 데이터 스트림을 비동기식으로 기록하도록 지원하는 ChunkedWriteHandler를 이용할 수 있다. ChunkInput<B> 인터페이스는 대용량 파일 전송에 가장 중요한 역할을 하며, 여기서 매개변수 B는 readChunk()메서드에서 반환하는 형식이다.
+
+|이름|설명|
+|---|---|
+|ChunkedFile|플랫폼에서 제로 카피를 지원하지 않거나 데이터를 전송해야 할 때 이용하기 위해 파일에서 청크 단위로 데이터를 가져온다.|
+|ChunkedNioFile|ChunkedFile과 비슷하지만 FileChannel을 이용한다.|
+|ChunkedStream|InputStream에서 청크 단위로 내용을 전송한다.|
+|ChunkedNioStream|ReadableByteChannel에서 청크 단위로 내용을 전송한다.|
+
+
+*ChunkedStream을 이용한 파일 내용 전송*
+```
+public class ChunkedWriteHandlerInitializer extends ChannelInitializer<Channel> {
+    private final File file;
+    private final SslContext context;
+
+    public ChunkedWriteHandlerInitializer(File file, SslContext context) {
+        this.file = file;
+        this.context = context;
+    }
+
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+
+        SslHandler sslHandler = context.newHandler(UnpooledByteBufAllocator.DEFAULT);
+        pipeline.addLast(sslHandler);
+        pipeline.addLast(new ChunkedWriteHandler());
+        pipeline.addLast(new WriteStreamHandler());
+    }
+
+    public final class WriteStreamHandler extends ChannelInboundHandlerAdapter
+    {
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            super.channelActive(ctx);
+            ctx.writeAndFlush(new ChunkedStream(new FileInputStream(file)));
+        }
+    }
+}
+```
+
+## 데이터 직렬화
+JDK는 네트워크를 통해 전송하는 기본형 데이터 형식과 POJO의 그래프를 직렬화/역직렬화하기 위한 ObjectOutputStream과 ObjectInputStream을 제공한다. API는 복잡하지 않으며 java.io.Serializable을 구현하는 모든 객체에 적용할 수 있지만 그다지 효율적이지도 않은 단점이 있따.
+
+### JDK 직렬화
+애플리케이션이 ObjectOutputStream과 ObjectInputStream을 이용하는 피어와 상호작용해야 하고 호환성을 중요하게 여긴다면 JDK 직렬화가 올바른 선택이다.
+
+*JDK 직렬화 코덱*
+|이름|설명|
+|---|---|
+|CompatibleObjectDecoder|JDK 직렬화를 이용하는 비-네티 피어와의 상호작용을 위한 디코더|
+|CompatibleObjectEncoder|JDK 직렬화를 이용하는 비-네티 피어와의 상호작용을 위한 인코더|
+|ObejctDecoder|JDK 직렬화를 바탕으로 커스텀 직렬화를 디코딩에 이용하는 디코더로서, 외부 의존성이 없는 경우 속도 향상을 제공한다. 반면 외부 의존성이 있으면 다른 직렬화 구현을 이용하는 것이 좋다.|
+|ObejctEncoder|JDK 직렬화를 바탕으로 커스텀 직렬화를 인코딩에 이용하는 인코더로서, 외부 의존성이 없는 경우 속도 향상을 제공한다. 반면 외부 의존성이 있으면 다른 직렬화 구현을 이용하는 것이 좋다.|
+
+### JBoss 마셜링을 이용한 직렬화
+외부 의존성을 이용할 수 있는 경우 JDK 직렬화보다 3배나 빠르고 크기도 작은 JBoss 마셜링을 이용하는 것이 좋다. JBoss 마셜링 홈페이지에서는 JBoss 마셜링을 다음과 같이 소개하고 있따.
+
+> JBoss 마셜링은 JDK 직렬화 API의 여러 문제를 해결하고 대체하기 위한 직렬화 API로서, java.io.Serializable 및 관련 API에 대한 완전한 호환성을 유지하면서 팩터리 구성(익스터널라이저, 클래스/인스턴스 조회 테이블, 클래스 확인, 객체 대체 등)을 통해 다양한 플러그 방식의 튜닝 가능 매개변수와 추가 기능을 제공한다.
+
+*JBoss 마셜링 코덱*
+|이름|설명|
+|---|---|
+|CompatibleMarshallingDecoder</br>CompatibleMarshallingEncoder|JDK 직렬화를 이용하는 피어와 호환된다|
+|MarshallingDecoder</br> MarshallingEncoder|JBoss 마셜링을 이용하는 피어와 호환된다. 이러한 클래스는 한쌍으로 이용해야 한다.|
+
+```
+public class MarshallingInitializer extends ChannelInitializer<Channel> {
+
+    private final MarshallerProvider marshallerProvider;
+    private final UnmarshallerProvider unmarshallerProvider;
+
+    public MarshallingInitializer(MarshallerProvider marshallerProvider
+            , UnmarshallerProvider unmarshallerProvider)
+    {
+        this.marshallerProvider = marshallerProvider;
+        this.unmarshallerProvider = unmarshallerProvider;
+    }
+
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        pipeline.addLast(new MarshallingDecoder(unmarshallerProvider));
+        pipeline.addLast(new MarshallingEncoder(marshallerProvider));
+        pipeline.addLast(new ObjectHandler());
+    }
+
+    public static final class ObjectHandler extends SimpleChannelInboundHandler<Serializable>
+    {
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, Serializable msg) throws Exception {
+            // 필요한 작업을 수행
+        }
+    }
+}
+```
+
+### 프로토콜 버퍼를 통한 직렬화
+
+네티는 마지막으로 구글이 개발하고 현재는 오픈소스인 프로토콜 버퍼를 활용하는 코덱을 직렬화 솔루션으로 제공한다.
+
+프로토콜 버펄는 구조화된 데이터를 작고 효율적으로 인코딩/디코딩하며, 여러 프로그래밍 언어를 위한 바인딩을 제공하므로 다중 언어 프로젝트에 적합하다.
+
+*protobuf코덱*
+|이름|설명|
+|---|---|
+|ProtobufDecoder|protobuf를 이용해 메시지를 디코딩한다.|
+|ProtobufEncode|protobuf를 이용해 메시지를 인코딩한다.|
+|ProtobufVarint32FrameDecoder|수신한 ByteBuf를 메시지의 구글 프로토콜 "Base 128 Varints" 정수 길이 필드의 값을 기준으로 동적으로 분할한다.|
+
