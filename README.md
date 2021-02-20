@@ -15,7 +15,7 @@
 - [09장. 단위 테스트](./chap09/chap09_summary.md)
 - [10장. 코덱 프레임워크](./chap10/chap10_summary.md)
 - [11장. 네티에서 제공하는 ChannelHandler와 코덱](./chap11/chap11_summary.md)
-- 12장. 웹소켓
+- [12장. 웹소켓](./chap12/chap12_summary.md)
 - 13장. UDP를 이용한 이벤트 브로드캐스팅
 - 14장. 사례 연구 1부
 - 15장. 사례 연구 2부
