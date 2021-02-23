@@ -22,7 +22,7 @@ public class TextWebSocketFrameHandler extends SimpleChannelInboundHandler<TextW
          *  이벤트가 핸드셰이크 성공을 의미하는 경우 HTTP메시지는 더 이상 수신하지 않으므로 ChannelPipeline에서
          *  HttpRequestHandler를 제거
          */
-        if (evt == WebSocketServerProtocolHandler.ServerHandshakeStateEvent.HANDSHAKE_TIMEOUT)
+        if (evt == WebSocketServerProtocolHandler.ServerHandshakeStateEvent.HANDSHAKE_COMPLETE)
         {
             ctx.pipeline().remove(HttpRequestHandler.class);
             group.writeAndFlush(new TextWebSocketFrame("Client " + ctx.channel() + " joined"));
@@ -39,6 +39,8 @@ public class TextWebSocketFrameHandler extends SimpleChannelInboundHandler<TextW
             ChannelHandlerContext ctx, TextWebSocketFrame msg
     ) throws Exception
     {
+        System.out.println(msg.text());
+
         group.writeAndFlush(msg.retain());
     }
 }

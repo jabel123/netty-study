@@ -47,6 +47,7 @@ public class ChatServer
     {
         int port = 5050;
         final ChatServer endpoint = new ChatServer();
+        System.out.println("server started port : " + port);
         ChannelFuture future = endpoint.start(new InetSocketAddress(port));
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
